@@ -138,8 +138,8 @@ install: $(INSTALL_DEP)
 	  ( $(LDCONFIG) $(INSTALL_LIB) || : ) && \
 	  $(SYMLINK) $(INSTALL_SONAME) $(INSTALL_SHORT1) && \
 	  $(SYMLINK) $(INSTALL_SONAME) $(INSTALL_SHORT2) || :
-	cd etc && $(INSTALL_F) $(FILE_MAN) $(INSTALL_MAN)
-	cd etc && $(SED_PC) $(FILE_PC) > $(FILE_PC).tmp && \
+	cd installer/etc && $(INSTALL_F) $(FILE_MAN) $(INSTALL_MAN)
+	cd installer/etc && $(SED_PC) $(FILE_PC) > $(FILE_PC).tmp && \
 	  $(INSTALL_F) $(FILE_PC).tmp $(INSTALL_PC) && \
 	  $(RM) $(FILE_PC).tmp
 	cd src && $(INSTALL_F) $(FILES_INC) $(INSTALL_INC)
