@@ -1,0 +1,131 @@
+name: LuaJIT Build (LuaJIT 2.1 for NexLua)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      build_android:
+        description: 'Build for Android'
+        type: boolean
+        required: true
+        default: true
+      build_windows:
+        description: 'Build for Windows (x86 & x64)'
+        type: boolean
+        required: true
+        default: false
+      build_linux:
+        description: 'Build for Linux (x86 & x64)'
+        type: boolean
+        required: true
+        default: false
+
+jobs:
+  # ====================================================
+  # Build for Android
+  # ====================================================
+  build-android:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_android == true }}
+    runs-on: ubuntu-24.04
+    env:
+      ANDROID_NDK_HOME: /opt/android/ndk/android-ndk-r28c
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y build-essential gcc-multilib make unzip wget dos2unix
+      
+      - name: Setup NDK
+        id: cache-ndk
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.ANDROID_NDK_HOME }}
+          key: ${{ runner.os }}-ndk-r28c
+      
+      - name: Download NDK if not cached
+        if: steps.cache-ndk.outputs.cache-hit != 'true'
+        run: |
+          sudo mkdir -p /opt/android/ndk
+          cd /opt/android/ndk
+          wget -q https://dl.google.com/android/repository/android-ndk-r28c-linux.zip
+          sudo unzip -q android-ndk-r28c-linux.zip
+          sudo chmod -R 777 ${{ env.ANDROID_NDK_HOME }}
+
+      - name: Build
+        run: |
+          dos2unix build-android.sh
+          chmod +x build-android.sh
+          ./build-android.sh
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: luajit-android-build
+          path: luajit-build/
+
+  # ====================================================
+  # Build for Windows (x86 & x64)
+  # ====================================================
+  build-windows:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_windows == true }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. Setup MSVC for x64 and Build
+      - name: Setup MSVC (x64)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      
+      - name: Build Windows x64
+        shell: cmd
+        run: call build-windows.bat x64
+
+      # 2. Setup MSVC for x86 and Build
+      # ilammy action 会重新配置环境
+      - name: Setup MSVC (x86)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x86
+      
+      - name: Build Windows x86
+        shell: cmd
+        run: call build-windows.bat x86
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: luajit-windows-build
+          path: luajit-build/
+
+  # ====================================================
+  # Build for Linux (x86 & x64)
+  # ====================================================
+  build-linux:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_linux == true }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y build-essential gcc-multilib make dos2unix
+
+      - name: Build
+        run: |
+          dos2unix build-linux.sh
+          chmod +x build-linux.sh
+          ./build-linux.sh
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: luajit-linux-build
+          path: luajit-build/
